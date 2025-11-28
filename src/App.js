@@ -274,13 +274,28 @@ function App() {
 
     } catch (error) {
       console.error("Error sending message:", error);
+      setMessages(prev => {
+        const errorMessage = {
+          role: "assistant",
+          data: [{
+            type: 'readme',
+            content: "Due to some technical issues, we cannot process this request. Please try again later."
+          }]
+        };
+        const finalMessages = [...prev, errorMessage];
+        
+        // Update chat with error message
+        updateChatInStorage(chatId, { messages: finalMessages });
+        
+        return finalMessages;
+      });
       toast.error("Failed to send message. Please try again.");
 
-      // Reload messages from storage on error
-      const currentChat = chats.find(chat => chat.id === chatId);
-      if (currentChat) {
-        setMessages(currentChat.messages || []);
-      }
+      // // Reload messages from storage on error
+      // const currentChat = chats.find(chat => chat.id === chatId);
+      // if (currentChat) {
+      //   setMessages(currentChat.messages || []);
+      // }
     } finally {
       setIsLoading(false);
     }
@@ -595,7 +610,7 @@ function App() {
                           {message.data && message.data.map((item, idx) => {
                             if (item.type === 'readme') {
                               return (
-                                <div key={idx} className="prose prose-sm max-w-none text-sm leading-relaxed border rounded-xl px-4 py-3 shadow-sm text-slate-900 bg-white border-slate-200 mb-3">
+                                <div key={idx} className="prose prose-sm max-w-none text-sm leading-relaxed border rounded-xl px-5 py-4 shadow-sm text-slate-900 bg-white border-slate-200 mb-3">
                                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.content}</ReactMarkdown>
                                 </div>
                               );
