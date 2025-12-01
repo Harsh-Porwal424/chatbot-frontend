@@ -59,6 +59,9 @@ export function DataTable({ tableContent }) {
     return prepareTableData(tableContent);
   }, [tableContent]);
 
+  // Check if table has 20+ rows to show advanced features
+  const showAdvancedFeatures = tableData.length >= 20;
+
   // Initialize TanStack Table
   const table = useReactTable({
     data: tableData,
@@ -115,91 +118,94 @@ export function DataTable({ tableContent }) {
 
   return (
     <div className="w-full space-y-3 border rounded-xl px-4 py-3 shadow-sm bg-white border-slate-200">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        {/* Search */}
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input
-            placeholder="Search in table..."
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9 h-9 bg-slate-50 border-slate-200 focus:bg-white"
-          />
+      {/* Toolbar - Only show for tables with 20+ rows */}
+      {showAdvancedFeatures && (
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          {/* Search */}
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Search in table..."
+              value={globalFilter ?? ""}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="pl-9 h-9 bg-slate-50 border-slate-200 focus:bg-white"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Column Visibility */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-2 border-slate-200 hover:bg-slate-50"
+                >
+                  <Settings2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Columns</span>
+                  <span className="text-xs text-slate-500">
+                    ({visibleColumnsCount}/{totalColumnsCount})
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {table.getAllLeafColumns().map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {column.columnDef.header}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Export CSV */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              className="h-9 gap-2 border-slate-200 hover:bg-slate-50"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">CSV</span>
+            </Button>
+
+            {/* Export Excel */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportExcel}
+              className="h-9 gap-2 border-slate-200 hover:bg-slate-50"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Excel</span>
+            </Button>
+          </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* Column Visibility */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 gap-2 border-slate-200 hover:bg-slate-50"
-              >
-                <Settings2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Columns</span>
-                <span className="text-xs text-slate-500">
-                  ({visibleColumnsCount}/{totalColumnsCount})
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {table.getAllLeafColumns().map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    {column.columnDef.header}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Export CSV */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="h-9 gap-2 border-slate-200 hover:bg-slate-50"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">CSV</span>
-          </Button>
-
-          {/* Export Excel */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportExcel}
-            className="h-9 gap-2 border-slate-200 hover:bg-slate-50"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Excel</span>
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Table */}
       <div className="border rounded-lg overflow-hidden border-slate-200">
-        <div className="overflow-x-auto">
+        {/* Use vertical scrolling with max height for large tables, no horizontal scroll */}
+        <div className={`overflow-y-auto ${tableData.length > 10 ? 'max-h-[500px]' : ''}`}>
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-slate-50">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="bg-slate-50 hover:bg-slate-50">
                   {headerGroup.headers.map((header) => {
                     return (
                       <TableHead
                         key={header.id}
-                        className="font-semibold text-slate-900 whitespace-nowrap"
+                        className="font-semibold text-slate-900"
                       >
                         {header.isPlaceholder ? null : (
                           <div
@@ -241,7 +247,7 @@ export function DataTable({ tableContent }) {
                     className="hover:bg-slate-50 transition-colors"
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="whitespace-nowrap">
+                      <TableCell key={cell.id} className="break-words max-w-xs">
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()

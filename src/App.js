@@ -19,6 +19,8 @@ import {
   LineChart,
   Lightbulb,
   CornerDownRight,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +28,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import clearDemandLogo from "@/images/clear_demand_logo-removebg-preview.png";
 import { DataTable } from "@/components/DataTable";
+import { MarkdownTableRenderer } from "@/components/MarkdownTableRenderer";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:9000';
 
@@ -234,7 +237,7 @@ function App() {
     }
 
     try {
-      // Call backend /chat endpoint
+      // Call backend /chat endpoint (non-streaming)
       const response = await axios.post(`${BACKEND_URL}/chat`, {
         user_input: messageToSend,
         session_id: currentSessionId
@@ -242,6 +245,11 @@ function App() {
 
       // Extract response structure from backend
       const { response: apiResponse, session_id: newSessionId } = response.data;
+
+      // Debug: Log the response to check structure
+      console.log("Backend response:", response.data);
+      console.log("API Response:", apiResponse);
+      console.log("API Response type:", typeof apiResponse);
 
       // Check status
       if (apiResponse.status === 'failure') {
@@ -259,7 +267,7 @@ function App() {
       setMessages(prev => {
         const aiMessage = {
           role: "assistant",
-          data: apiResponse.data // Array with type: readme/follow-up
+          data: apiResponse.data // Array with type: readme/follow-up/table
         };
         const finalMessages = [...prev, aiMessage];
 
@@ -283,19 +291,14 @@ function App() {
           }]
         };
         const finalMessages = [...prev, errorMessage];
-        
+
         // Update chat with error message
         updateChatInStorage(chatId, { messages: finalMessages });
-        
+
         return finalMessages;
       });
       toast.error("Failed to send message. Please try again.");
 
-      // // Reload messages from storage on error
-      // const currentChat = chats.find(chat => chat.id === chatId);
-      // if (currentChat) {
-      //   setMessages(currentChat.messages || []);
-      // }
     } finally {
       setIsLoading(false);
     }
@@ -366,11 +369,11 @@ function App() {
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
-            initial={{ x: -280 }}
+            initial={{ x: -240 }}
             animate={{ x: 0 }}
-            exit={{ x: -280 }}
+            exit={{ x: -240 }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="w-[260px] border-r flex flex-col fixed lg:relative h-full z-20 border-slate-200 bg-white"
+            className="w-[240px] border-r flex flex-col fixed lg:relative h-full z-20 border-slate-200 bg-white"
           >
             {/* Header */}
             <div className="px-3 py-4 border-b border-slate-200">
@@ -526,7 +529,7 @@ function App() {
 
         {/* Messages Container */}
         <ScrollArea className="flex-1 bg-slate-50">
-          <div className="max-w-3xl mx-auto px-4 md:px-6 py-8">
+          <div className="max-w-5xl mx-auto px-6 md:px-8 py-6">
             {messages.length === 0 && !isLoading ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -578,7 +581,7 @@ function App() {
                 </div>
               </motion.div>
             ) : (
-              <div data-testid="messages-container" className="space-y-6">
+              <div data-testid="messages-container" className="space-y-4">
                 {messages.map((message, index) => (
                   <motion.div
                     key={index}
@@ -610,34 +613,49 @@ function App() {
                           {message.data && message.data.map((item, idx) => {
                             if (item.type === 'readme') {
                               return (
-                                <div key={idx} className="prose prose-sm max-w-none text-sm leading-relaxed border rounded-xl px-5 py-4 shadow-sm text-slate-900 bg-white border-slate-200 mb-3">
-                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.content}</ReactMarkdown>
-                                </div>
-                              );
-                            } else if (item.type === 'table') {
-                              return (
-                                <div key={idx} className="mb-3">
-                                  <DataTable tableContent={item.content} />
+                                <div key={idx} className="prose prose-sm max-w-none text-sm leading-relaxed border rounded-xl px-4 py-3 shadow-sm text-slate-900 bg-white border-slate-200 mb-2">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      // Use custom table renderer
+                                      table: MarkdownTableRenderer
+                                    }}
+                                  >
+                                    {item.content}
+                                  </ReactMarkdown>
                                 </div>
                               );
                             } else if (item.type === 'follow-up') {
                               return (
-                                <div key={idx} className="mt-4 border rounded-xl px-4 py-3 bg-slate-50 border-slate-200">
-                                  <h3 className="text-lg font-semibold text-slate-900 mb-3">Related Questions</h3>
-                                  <div className="space-y-2">
-                                    {item.content.map((question, qIdx) => (
+                                <div key={idx} className="mt-3 flex flex-wrap gap-2">
+                                  {item.content.map((suggestion, qIdx) => {
+                                    // Determine icon based on suggestion content
+                                    let Icon = CornerDownRight;
+                                    const lowerSuggestion = suggestion.toLowerCase();
+
+                                    if (lowerSuggestion.includes('yes') || lowerSuggestion.includes('proceed') || lowerSuggestion.includes('create')) {
+                                      Icon = Check;
+                                    } else if (lowerSuggestion.includes('no') || lowerSuggestion.includes('cancel')) {
+                                      Icon = X;
+                                    } else if (lowerSuggestion.includes('show') || lowerSuggestion.includes('list') || lowerSuggestion.includes('example')) {
+                                      Icon = Search;
+                                    } else if (lowerSuggestion.includes('explain') || lowerSuggestion.includes('how') || lowerSuggestion.includes('what')) {
+                                      Icon = Lightbulb;
+                                    }
+
+                                    return (
                                       <button
                                         key={qIdx}
                                         onClick={() => {
-                                          sendMessage(question);
+                                          sendMessage(suggestion);
                                         }}
-                                        className="w-full flex items-start gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:text-blue-600 hover:bg-white rounded-lg transition-colors group"
+                                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow group"
                                       >
-                                        <CornerDownRight className="w-4 h-4 mt-0.5 text-slate-400 group-hover:text-blue-500 flex-shrink-0" />
-                                        <span className="flex-1">{question}</span>
+                                        <Icon className="w-4 h-4 text-slate-400 group-hover:text-blue-500 flex-shrink-0" />
+                                        <span>{suggestion}</span>
                                       </button>
-                                    ))}
-                                  </div>
+                                    );
+                                  })}
                                 </div>
                               );
                             }
@@ -715,7 +733,7 @@ function App() {
 
         {/* Input Area */}
         <div className="border-t p-4 md:p-6 border-slate-200 bg-gradient-to-b from-white to-slate-50/30">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-5xl mx-auto">
             <div className="relative">
               <div className="relative flex items-end gap-2 border-2 rounded-2xl focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all duration-200 shadow-lg shadow-slate-200/50 px-4 py-3 border-slate-200 bg-white hover:shadow-xl hover:shadow-slate-200/60">
                 <Textarea
