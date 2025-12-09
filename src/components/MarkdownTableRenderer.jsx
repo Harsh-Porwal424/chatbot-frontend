@@ -4,36 +4,68 @@ import { DataTable } from './DataTable';
 /**
  * Custom component to render markdown tables using the enhanced DataTable component
  */
-export function MarkdownTableRenderer({ children }) {
+export function MarkdownTableRenderer({ children, onCellClick }) {
+  console.log('[MarkdownTableRenderer] Rendered with onCellClick:', !!onCellClick);
+
   // Extract table data from markdown table element
   const tableContent = useMemo(() => {
-    if (!children || !children.props || !children.props.children) {
+    console.log('[MarkdownTableRenderer useMemo] Starting parse. children:', children);
+    console.log('[MarkdownTableRenderer useMemo] children type:', typeof children);
+    console.log('[MarkdownTableRenderer useMemo] children is array?', Array.isArray(children));
+
+    if (!children) {
+      console.log('[MarkdownTableRenderer useMemo] Early return: no children');
       return null;
     }
 
-    const tableChildren = children.props.children;
-    let thead = null;
-    let tbody = null;
+    // ReactMarkdown passes children as an array directly: [thead, tbody]
+    const tableChildren = Array.isArray(children) ? children : [children];
+    console.log('[MarkdownTableRenderer useMemo] tableChildren:', tableChildren);
+    console.log('[MarkdownTableRenderer useMemo] tableChildren length:', tableChildren.length);
+
+    tableChildren.forEach((child, idx) => {
+      console.log(`[MarkdownTableRenderer useMemo] tableChildren[${idx}] type:`, child?.type);
+    });
 
     // Find thead and tbody elements
-    if (Array.isArray(tableChildren)) {
-      thead = tableChildren.find(child => child?.type === 'thead');
-      tbody = tableChildren.find(child => child?.type === 'tbody');
-    }
+    const thead = tableChildren.find(child => child?.type === 'thead');
+    const tbody = tableChildren.find(child => child?.type === 'tbody');
+
+    console.log('[MarkdownTableRenderer useMemo] Found thead?', !!thead);
+    console.log('[MarkdownTableRenderer useMemo] Found tbody?', !!tbody);
 
     if (!thead || !tbody) {
+      console.log('[MarkdownTableRenderer useMemo] Missing thead or tbody');
       return null;
     }
 
     // Extract headers
     const headers = [];
-    const theadRow = thead.props?.children?.props?.children;
-    if (Array.isArray(theadRow)) {
-      theadRow.forEach(th => {
+    console.log('[MarkdownTableRenderer useMemo] thead.props:', thead.props);
+    console.log('[MarkdownTableRenderer useMemo] thead.props.children:', thead.props?.children);
+
+    // thead.props.children should be a <tr> element
+    const theadTr = thead.props?.children;
+    console.log('[MarkdownTableRenderer useMemo] theadTr:', theadTr);
+    console.log('[MarkdownTableRenderer useMemo] theadTr.props:', theadTr?.props);
+    console.log('[MarkdownTableRenderer useMemo] theadTr.props.children:', theadTr?.props?.children);
+
+    // theadTr.props.children should be an array of <th> elements
+    const theadCells = theadTr?.props?.children;
+    console.log('[MarkdownTableRenderer useMemo] theadCells is array?', Array.isArray(theadCells));
+
+    if (Array.isArray(theadCells)) {
+      theadCells.forEach((th, idx) => {
+        console.log(`[MarkdownTableRenderer useMemo] th[${idx}]:`, th);
+        console.log(`[MarkdownTableRenderer useMemo] th[${idx}].props:`, th?.props);
+        console.log(`[MarkdownTableRenderer useMemo] th[${idx}].props.children:`, th?.props?.children);
+
         if (th?.props?.children) {
-          headers.push(typeof th.props.children === 'string'
+          const headerText = typeof th.props.children === 'string'
             ? th.props.children
-            : th.props.children.toString());
+            : th.props.children.toString();
+          headers.push(headerText);
+          console.log(`[MarkdownTableRenderer useMemo] Added header: "${headerText}"`);
         }
       });
     }
@@ -72,8 +104,15 @@ export function MarkdownTableRenderer({ children }) {
 
   // If we couldn't parse the table, render default table
   if (!tableContent) {
+    console.log('[MarkdownTableRenderer] Could not parse table content, rendering default');
     return children;
   }
 
-  return <DataTable tableContent={tableContent} />;
+  console.log('[MarkdownTableRenderer] Rendering DataTable with:', {
+    headers: tableContent.headers,
+    rowCount: tableContent.body.length,
+    onCellClickExists: !!onCellClick
+  });
+
+  return <DataTable tableContent={tableContent} onCellClick={onCellClick} />;
 }

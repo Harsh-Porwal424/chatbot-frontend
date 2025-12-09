@@ -617,8 +617,21 @@ function App() {
                                   <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
                                     components={{
-                                      // Use custom table renderer
-                                      table: MarkdownTableRenderer
+                                      // Use custom table renderer with cell click handler
+                                      table: (props) => {
+                                        console.log('[App.js] Creating table component with props:', props);
+                                        return (
+                                          <MarkdownTableRenderer
+                                            {...props}
+                                            onCellClick={(cellValue, headerText) => {
+                                              console.log('[App.js] onCellClick called with:', { cellValue, headerText });
+                                              // When user clicks on an ID cell, send it as a message
+                                              console.log('[App.js] Calling sendMessage with:', cellValue);
+                                              sendMessage(`${cellValue}`);
+                                            }}
+                                          />
+                                        );
+                                      }
                                     }}
                                   >
                                     {item.content}

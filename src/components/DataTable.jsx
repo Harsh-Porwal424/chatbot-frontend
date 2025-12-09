@@ -45,7 +45,7 @@ import {
   generateFilename,
 } from "@/lib/tableUtils";
 
-export function DataTable({ tableContent }) {
+export function DataTable({ tableContent, onCellClick }) {
   const [sorting, setSorting] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
@@ -246,14 +246,60 @@ export function DataTable({ tableContent }) {
                     key={row.id}
                     className="hover:bg-slate-50 transition-colors"
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="break-words max-w-xs">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
+                    {row.getVisibleCells().map((cell, cellIndex) => {
+                      const cellValue = cell.getValue();
+                      const headerText = tableContent.headers[cellIndex];
+
+                      // Check if this is an ID column (first column or contains "ID" in header)
+                      const isIDColumn = cellIndex === 0 ||
+                                       (headerText && headerText.toLowerCase().includes('id'));
+
+                      // Make ID cells clickable
+                      const isClickable = isIDColumn && onCellClick && cellValue;
+
+                      // Debug logging
+                      if (cellIndex === 0) {
+                        console.log('[DataTable] First cell in row:', {
+                          cellValue,
+                          headerText,
+                          isIDColumn,
+                          onCellClickExists: !!onCellClick,
+                          isClickable,
+                          cellValueType: typeof cellValue
+                        });
+                      }
+
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          className={`break-words max-w-xs ${
+                            isClickable
+                              ? 'cursor-pointer text-blue-600 hover:text-blue-800 hover:underline font-medium'
+                              : ''
+                          }`}
+                          onClick={() => {
+                            console.log('[DataTable] Cell clicked:', {
+                              cellValue,
+                              headerText,
+                              isClickable,
+                              cellIndex
+                            });
+                            if (isClickable) {
+                              console.log('[DataTable] Calling onCellClick with:', cellValue, headerText);
+                              onCellClick(cellValue, headerText);
+                            } else {
+                              console.log('[DataTable] Cell not clickable, skipping');
+                            }
+                          }}
+                          title={isClickable ? `Click to view details for ${headerText}: ${cellValue}` : ''}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))
               ) : (
