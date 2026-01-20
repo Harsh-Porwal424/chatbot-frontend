@@ -404,3 +404,75 @@ textarea:focus-visible {
   border-color: #cbd5e1;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
+
+/* Tree Search Highlight Styling */
+mark {
+  background-color: #fef08a;
+  color: #1e293b;
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+mark:hover {
+  background-color: #fde047;
+}
+
+/* Search input focus states */
+input[type="text"]:focus {
+  transition: all 0.2s ease;
+}
+
+/* Tree node highlight on search match */
+.tree-node-match {
+  background-color: #fef3c7;
+  border-left: 3px solid #f59e0b;
+  transition: all 0.2s ease;
+}
+
+/* Smooth expand/collapse animations for tree nodes */
+.tree-node-children {
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Search mode toggle button animations */
+.search-mode-toggle {
+  position: relative;
+  overflow: hidden;
+}
+
+.search-mode-toggle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease;
+}
+
+.search-mode-toggle:active::after {
+  width: 100px;
+  height: 100px;
+}
+
+/* Empty state styling */
+.empty-state {
+  animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
