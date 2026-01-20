@@ -144,6 +144,7 @@ export default function ClearDemandEnterprise() {
   const [filteredLocationHierarchy, setFilteredLocationHierarchy] = useState(null);
   const [selectedProductNodeName, setSelectedProductNodeName] = useState(null);
   const [selectedLocationNodeName, setSelectedLocationNodeName] = useState(null);
+  const [contextPanelActiveTab, setContextPanelActiveTab] = useState("scenarios");
 
   // Refs
   const inputRef = useRef(null);
@@ -269,92 +270,109 @@ export default function ClearDemandEnterprise() {
     }
   };
 
+  // Fetch all scenarios with optional filter
+  const fetchAllScenarios = async (filter = "") => {
+    try {
+      const url = filter
+        ? `/api/v1/pricing-rules/scenario?search=${encodeURIComponent(filter)}`
+        : '/api/v1/pricing-rules/scenario';
+      const response = await axios.get(url);
+      const transformedScenarios = response.data.items.map(item => ({
+        id: item.scenario_id,
+        name: item.name,
+        description: item.description || 'No description available'
+      }));
+      setAllScenarios(transformedScenarios);
+      setTotalScenariosCount(response.data.total_items || 0);
+    } catch (error) {
+      console.error('Error fetching all scenarios:', error);
+    }
+  };
+
   // Fetch all scenarios once on mount
   useEffect(() => {
-    const fetchAllScenarios = async () => {
-      try {
-        const response = await axios.get('/api/v1/pricing-rules/scenario');
-        const transformedScenarios = response.data.items.map(item => ({
-          id: item.scenario_id,
-          name: item.name,
-          description: item.description || 'No description available'
-        }));
-        setAllScenarios(transformedScenarios);
-        setTotalScenariosCount(response.data.total_items || 0);
-      } catch (error) {
-        console.error('Error fetching all scenarios:', error);
-      }
-    };
     fetchAllScenarios();
   }, []);
 
+  // Fetch panels for a scenario with optional filter
+  const fetchPanelsForScenario = async (scenarioId, filter = "") => {
+    if (!scenarioId) {
+      setAllPanels([]);
+      setTotalPanelsCount(0);
+      return;
+    }
+
+    try {
+      let url = `/api/v1/pricing-rules/panel?scenario_id=${scenarioId}`;
+      if (filter) {
+        url += `&search=${encodeURIComponent(filter)}`;
+      }
+      const response = await axios.get(url);
+      const transformedPanels = response.data.items.map(item => ({
+        id: item.panel_id,
+        name: item.panel_name,
+        description: item.comment || 'No description available',
+        priority: item.priority,
+        location_node_id: item.location_node_id,
+        location_group_id: item.location_group_id,
+        product_group_id: item.product_group_id,
+        product_node_id: item.product_node_id,
+        scenarioId: item.scenario_id
+      }));
+      setAllPanels(transformedPanels);
+      setTotalPanelsCount(response.data.total_items || 0);
+    } catch (error) {
+      console.error('Error fetching panels:', error);
+      setAllPanels([]);
+      setTotalPanelsCount(0);
+    }
+  };
+
   // Fetch panels when scenario is selected
   useEffect(() => {
-    const fetchPanelsForScenario = async () => {
-      if (!selectedScenario) {
-        setAllPanels([]);
-        setTotalPanelsCount(0);
-        return;
-      }
-
-      try {
-        const response = await axios.get(`/api/v1/pricing-rules/panel?scenario_id=${selectedScenario}`);
-        const transformedPanels = response.data.items.map(item => ({
-          id: item.panel_id,
-          name: item.panel_name,
-          description: item.comment || 'No description available',
-          priority: item.priority,
-          location_node_id: item.location_node_id,
-          location_group_id: item.location_group_id,
-          product_group_id: item.product_group_id,
-          product_node_id: item.product_node_id,
-          scenarioId: item.scenario_id
-        }));
-        setAllPanels(transformedPanels);
-        setTotalPanelsCount(response.data.total_items || 0);
-      } catch (error) {
-        console.error('Error fetching panels:', error);
-        setAllPanels([]);
-        setTotalPanelsCount(0);
-      }
-    };
-    fetchPanelsForScenario();
+    fetchPanelsForScenario(selectedScenario);
   }, [selectedScenario]);
+
+  // Fetch rules for a panel with optional filter
+  const fetchRulesForPanel = async (panelId, filter = "") => {
+    if (!panelId) {
+      setAllRules([]);
+      setTotalRulesCount(0);
+      return;
+    }
+
+    try {
+      let url = `/api/v1/pricing-rules/panel/${panelId}/rules`;
+      if (filter) {
+        url += `?search=${encodeURIComponent(filter)}`;
+      }
+      const response = await axios.get(url);
+      const transformedRules = response.data.items.map(item => ({
+        id: item.rule_id,
+        panelId: item.panel_id,
+        rank: item.hard_rule_rank,
+        ruleType: item.rule_sub_type_desc,
+        description: item.rule_desc || 'No description available',
+        active: item.active,
+        hardRuleFlag: item.hard_rule_flag,
+        intelligentRuleFlag: item.intelligent_rule_flag,
+        priceTypeDesc: item.price_type_desc,
+        ruleTypeDesc: item.rule_type_desc,
+        ruleWeight: item.rule_weight,
+        valid: item.valid
+      }));
+      setAllRules(transformedRules);
+      setTotalRulesCount(response.data.total_records || 0);
+    } catch (error) {
+      console.error('Error fetching rules:', error);
+      setAllRules([]);
+      setTotalRulesCount(0);
+    }
+  };
 
   // Fetch rules when panel is selected
   useEffect(() => {
-    const fetchRulesForPanel = async () => {
-      if (!selectedPanel) {
-        setAllRules([]);
-        setTotalRulesCount(0);
-        return;
-      }
-
-      try {
-        const response = await axios.get(`/api/v1/pricing-rules/panel/${selectedPanel}/rules`);
-        const transformedRules = response.data.items.map(item => ({
-          id: item.rule_id,
-          panelId: item.panel_id,
-          rank: item.hard_rule_rank,
-          ruleType: item.rule_sub_type_desc,
-          description: item.rule_desc || 'No description available',
-          active: item.active,
-          hardRuleFlag: item.hard_rule_flag,
-          intelligentRuleFlag: item.intelligent_rule_flag,
-          priceTypeDesc: item.price_type_desc,
-          ruleTypeDesc: item.rule_type_desc,
-          ruleWeight: item.rule_weight,
-          valid: item.valid
-        }));
-        setAllRules(transformedRules);
-        setTotalRulesCount(response.data.total_records || 0);
-      } catch (error) {
-        console.error('Error fetching rules:', error);
-        setAllRules([]);
-        setTotalRulesCount(0);
-      }
-    };
-    fetchRulesForPanel();
+    fetchRulesForPanel(selectedPanel);
   }, [selectedPanel]);
 
   // Load chats from localStorage on mount
@@ -724,7 +742,7 @@ export default function ClearDemandEnterprise() {
 
     try {
       const response = await axios.post(CHAT_URL, payload);
-      const { response: apiResponse, session_id: newSessionId, chat_id: newChatId } = response.data;
+      const { response: apiResponse, session_id: newSessionId, chat_id: newChatId, ui_hints } = response.data;
 
       // Store session_id and chat_id for conversation continuity
       if (newSessionId && newSessionId !== currentSessionId) {
@@ -755,6 +773,11 @@ export default function ClearDemandEnterprise() {
         return updated;
       });
 
+      // Process UI hints if present
+      if (ui_hints && Array.isArray(ui_hints) && ui_hints.length > 0) {
+        await processUIHints(ui_hints);
+      }
+
     } catch (error) {
       console.error("Error sending message:", error);
 
@@ -782,6 +805,113 @@ export default function ClearDemandEnterprise() {
   const handleQuickAction = (text) => {
     setInputValue(text);
     inputRef.current?.focus();
+  };
+
+  // Process UI hints from chat response
+  const processUIHints = async (uiHints) => {
+    if (!uiHints || !Array.isArray(uiHints)) return;
+
+    // Process RELOAD_DATA actions first, then other actions
+    const reloadActions = [];
+    const otherActions = [];
+
+    for (const hint of uiHints) {
+      if (hint.action === "RELOAD_DATA") {
+        reloadActions.push(hint);
+      } else {
+        otherActions.push(hint);
+      }
+    }
+
+    // Process reload actions first
+    for (const hint of reloadActions) {
+      const { target, filter } = hint;
+      
+      if (target === "scenarios") {
+        await fetchAllScenarios(filter || "");
+      } else if (target === "panels") {
+        // Reload panels for currently selected scenario
+        if (selectedScenario) {
+          await fetchPanelsForScenario(selectedScenario, filter || "");
+        }
+      } else if (target === "rules") {
+        // Reload rules for currently selected panel
+        if (selectedPanel) {
+          await fetchRulesForPanel(selectedPanel, filter || "");
+        }
+      }
+    }
+
+    // Process other actions (OPEN_SIDEBAR, SELECT_ITEM, SHOW_CREATE_FORM)
+    for (const hint of otherActions) {
+      const { action, tab, target, filter, item_id } = hint;
+
+      switch (action) {
+        case "OPEN_SIDEBAR":
+          // Open context panel and set active tab
+          if (tab && ["scenarios", "panels", "rules", "scope"].includes(tab)) {
+            setContextPanelActiveTab(tab);
+            setContextPanelOpen(true);
+            // Also close sidebar if on small screen to make room for context panel
+            if (!isLargeScreen) {
+              setSidebarOpen(false);
+            }
+          }
+          break;
+
+        case "SELECT_ITEM":
+          // Select item based on target and optional item_id
+          if (target === "scenario") {
+            if (item_id) {
+              // Select specific scenario by ID
+              const scenario = allScenarios.find(s => s.id.toString() === item_id.toString());
+              if (scenario) {
+                handleScenarioSelect(scenario.id);
+              }
+            } else if (allScenarios.length > 0) {
+              // Select first scenario if no ID specified
+              handleScenarioSelect(allScenarios[0].id);
+            }
+          } else if (target === "panel") {
+            if (item_id) {
+              // Select specific panel by ID
+              const panel = allPanels.find(p => p.id.toString() === item_id.toString());
+              if (panel) {
+                handlePanelSelect(panel.id);
+              }
+            } else if (allPanels.length > 0) {
+              // Select first panel if no ID specified
+              handlePanelSelect(allPanels[0].id);
+            }
+          } else if (target === "rule") {
+            if (item_id) {
+              // Select specific rule by ID
+              const rule = allRules.find(r => r.id.toString() === item_id.toString());
+              if (rule) {
+                setSelectedRules(new Set([rule.id]));
+              }
+            } else if (allRules.length > 0) {
+              // Select first rule if no ID specified
+              setSelectedRules(new Set([allRules[0].id]));
+            }
+          }
+          break;
+
+        case "SHOW_CREATE_FORM":
+          // Open create dialog based on target
+          if (target === "scenario") {
+            handleCreateNewScenario();
+          } else if (target === "panel") {
+            handleCreateNewPanel();
+          } else if (target === "rule") {
+            handleCreateNewRule();
+          }
+          break;
+
+        default:
+          console.warn(`Unknown UI hint action: ${action}`);
+      }
+    }
   };
 
   // Quick actions data
@@ -1094,6 +1224,8 @@ export default function ClearDemandEnterprise() {
               locationHierarchy={filteredLocationHierarchy || locationHierarchy}
               productGroups={productGroups}
               locationGroups={locationGroups}
+              activeTab={contextPanelActiveTab}
+              onActiveTabChange={setContextPanelActiveTab}
             />
           )}
         </div>

@@ -45,8 +45,20 @@ export const ContextPanel = ({
   locationHierarchy,
   productGroups,
   locationGroups,
+  activeTab: externalActiveTab,
+  onActiveTabChange,
 }) => {
-  const [activeTab, setActiveTab] = useState("scenarios");
+  const [internalActiveTab, setInternalActiveTab] = useState("scenarios");
+  
+  // Use external activeTab if provided, otherwise use internal state
+  const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
+  const setActiveTab = (tab) => {
+    if (onActiveTabChange) {
+      onActiveTabChange(tab);
+    } else {
+      setInternalActiveTab(tab);
+    }
+  };
   const [scopeTab, setScopeTab] = useState("products");
   const [scopeView, setScopeView] = useState("tree");
   const [expandedProducts, setExpandedProducts] = useState(
