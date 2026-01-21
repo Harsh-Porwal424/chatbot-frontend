@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { DataTable } from './DataTable';
+import { ParameterValueTable } from './ParameterValueTable';
 
 /**
  * Custom component to render markdown tables using the enhanced DataTable component
@@ -108,11 +109,27 @@ export function MarkdownTableRenderer({ children, onCellClick }) {
     return children;
   }
 
-  console.log('[MarkdownTableRenderer] Rendering DataTable with:', {
+  console.log('[MarkdownTableRenderer] Rendering table with:', {
     headers: tableContent.headers,
     rowCount: tableContent.body.length,
     onCellClickExists: !!onCellClick
   });
 
+  // Use ParameterValueTable for simple parameter-value tables (2 columns, < 20 rows)
+  // Use DataTable for complex tables with many rows or columns
+  const isSimpleTable = tableContent.headers.length === 2 && tableContent.body.length < 20;
+  const firstHeader = (tableContent.headers[0] || '').toLowerCase();
+  const isParameterValueTable = isSimpleTable && 
+    (firstHeader.includes('parameter') || 
+     firstHeader.includes('key') ||
+     firstHeader.includes('field') ||
+     firstHeader.includes('property') ||
+     firstHeader.includes('name'));
+
+  if (isParameterValueTable) {
+    return <ParameterValueTable tableContent={tableContent} onCellClick={onCellClick} />;
+  }
+
+  // For larger tables or complex tables, use DataTable
   return <DataTable tableContent={tableContent} onCellClick={onCellClick} />;
 }
